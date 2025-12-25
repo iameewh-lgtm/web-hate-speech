@@ -1,7 +1,7 @@
 // File: api/chat.js
 export default async function handler(req, res) {
     // 1. Cấu hình
-    const TOKEN = "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"; // Token của bạn
+    const TOKEN = "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"; // Token của bạn
     const MODEL_ID = "iameewh/vihsd-hate-speech-pro";
     
     // 2. Chỉ chấp nhận phương thức POST
