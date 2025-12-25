@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Filter</title>
+    <style>
+        body { background: #050505; color: #ededed; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #121212; padding: 30px; border-radius: 16px; border: 1px solid #333; width: 400px; }
+        textarea { width: 100%; background: #000; color: white; padding: 10px; border: 1px solid #333; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; margin-top: 15px; padding: 12px; background: #ededed; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        #res { margin-top: 20px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2 style="text-align:center">Kiểm Tra Hate Speech</h2>
+    <textarea id="inp" rows="4" placeholder="Nhập câu vào đây..."></textarea>
+    <button id="btn" onclick="run()">PHÂN TÍCH</button>
+    <div id="res">
+        Kết quả: <b id="lbl">...</b> <span id="score"></span>
+    </div>
+</div>
+
+<script>
+    async function run() {
+        const txt = document.getElementById('inp').value.trim();
+        const btn = document.getElementById('btn');
+        const res = document.getElementById('res');
+
+        // 👇👇👇 DÁN TOKEN CỦA BẠN VÀO ĐÂY 👇👇👇
+        const TOKEN = "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"; 
+
+        if(!txt) return alert("Nhập nội dung đi bạn!");
+        
+        btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
+
+        try {
+            // Gọi vào đường dẫn ảo /api/proxy (Do file vercel.json quản lý)
+            const req = await fetch("/api/proxy", {
+                method: "POST",
+                headers: { 
+                    "Authorization": `Bearer ${TOKEN}`, 
+                    "Content-Type": "application/json" 
+                },
+                body: JSON.stringify({ inputs: txt })
+            });
+
+            if (!req.ok) {
+                const err = await req.text();
+                if (req.status === 404) {
+                    alert("❌ Lỗi 404: Vercel chưa nhận file vercel.json.\nLý do: Bạn đặt tên file sai (ví dụ vercel.json.txt). Hãy sửa lại tên file!");
+                } else if (req.status === 503) {
+                    alert("💤 Model đang khởi động (Cold Boot). Đợi 20s rồi bấm lại!");
+                } else {
+                    alert(`❌ Lỗi ${req.status}: ${err}`);
+                }
+                reset(); return;
+            }
+
+            const data = await req.json();
+            // Xử lý kết quả trả về từ Router (thường là mảng mảng [[{...}]])
+            const preds = Array.isArray(data[0]) ? data[0] : data;
+            
+            // Sắp xếp điểm cao nhất
+            preds.sort((a,b) => b.score - a.score);
+            const top = preds[0];
+
+            document.getElementById('lbl').innerText = top.label;
+            document.getElementById('score').innerText = `(${Math.round(top.score*100)}%)`;
+            res.style.display = 'block';
+
+        } catch (e) {
+            alert("Lỗi kết nối: " + e.message);
+        }
+        reset();
+    }
+
+    function reset() { 
+        document.getElementById('btn').innerText = "PHÂN TÍCH"; 
+        document.getElementById('btn').disabled = false; 
+    }
+</script>
+
+</body>
+</html>
