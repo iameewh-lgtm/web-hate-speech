@@ -3,83 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Content Filter</title>
+    <title>AI Hate Speech Detector</title>
     <style>
-        body { background: #050505; color: #ededed; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #121212; padding: 30px; border-radius: 16px; border: 1px solid #333; width: 400px; }
-        textarea { width: 100%; background: #000; color: white; padding: 10px; border: 1px solid #333; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; margin-top: 15px; padding: 12px; background: #ededed; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        #res { margin-top: 20px; display: none; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: #111; padding: 30px; border-radius: 12px; border: 1px solid #333; width: 400px; text-align: center; }
+        textarea { width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 6px; box-sizing: border-box; font-size: 16px; resize: none; }
+        button { width: 100%; padding: 12px; margin-top: 15px; background: #fff; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        button:disabled { background: #555; cursor: wait; }
+        .badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; margin-top: 10px; }
+        .safe { background: #1f4625; color: #4ade80; border: 1px solid #4ade80; }
+        .toxic { background: #451a1a; color: #f87171; border: 1px solid #f87171; }
+        #result { margin-top: 20px; display: none; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2 style="text-align:center">Kiểm Tra Hate Speech</h2>
-    <textarea id="inp" rows="4" placeholder="Nhập câu vào đây..."></textarea>
-    <button id="btn" onclick="run()">PHÂN TÍCH</button>
-    <div id="res">
-        Kết quả: <b id="lbl">...</b> <span id="score"></span>
+<div class="box">
+    <h2>iameewh.art</h2>
+    <p style="color:#888; margin-bottom: 20px;">Kiểm tra ngôn từ độc hại</p>
+    
+    <textarea id="inp" rows="4" placeholder="Nhập câu cần kiểm tra..."></textarea>
+    <button id="btn" onclick="check()">PHÂN TÍCH</button>
+    
+    <div id="result">
+        <div id="lbl" class="badge">...</div>
+        <p id="score" style="color:#888; margin-top:5px; font-size:14px"></p>
     </div>
 </div>
 
 <script>
-    async function run() {
+    async function check() {
         const txt = document.getElementById('inp').value.trim();
         const btn = document.getElementById('btn');
-        const res = document.getElementById('res');
-
-        // 👇👇👇 DÁN TOKEN CỦA BẠN VÀO ĐÂY 👇👇👇
-        const TOKEN = "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"; 
-
-        if(!txt) return alert("Nhập nội dung đi bạn!");
+        const res = document.getElementById('result');
         
-        btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
+        // 👇👇👇 DÁN TOKEN MỚI CỦA BẠN VÀO ĐÂY (Giữ nguyên dấu ngoặc kép) 👇👇👇
+        const TOKEN = "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"; 
 
+        if (!txt) return alert("Nhập chữ đi bạn ơi!");
+        
+        btn.innerText = "⏳ Đang chạy..."; btn.disabled = true; res.style.display = 'none';
+
+        // --- BÍ KÍP VƯỢT TƯỜNG LỬA ---
+        // Chúng ta dùng CorsProxy để đi vòng qua lỗi bảo mật của trình duyệt
+        const PROXY = "https://corsproxy.io/?";
+        const API = "https://api-inference.huggingface.co/models/iameewh/vihsd-hate-speech-pro";
+        
         try {
-            // Gọi vào đường dẫn ảo /api/proxy (Do file vercel.json quản lý)
-            const req = await fetch("/api/proxy", {
+            const response = await fetch(PROXY + encodeURIComponent(API), {
                 method: "POST",
                 headers: { 
-                    "Authorization": `Bearer ${TOKEN}`, 
-                    "Content-Type": "application/json" 
+                    "Authorization": `Bearer ${TOKEN}`,
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ inputs: txt })
             });
 
-            if (!req.ok) {
-                const err = await req.text();
-                if (req.status === 404) {
-                    alert("❌ Lỗi 404: Vercel chưa nhận file vercel.json.\nLý do: Bạn đặt tên file sai (ví dụ vercel.json.txt). Hãy sửa lại tên file!");
-                } else if (req.status === 503) {
-                    alert("💤 Model đang khởi động (Cold Boot). Đợi 20s rồi bấm lại!");
+            if (!response.ok) {
+                const err = await response.text();
+                // Nếu lỗi 503 nghĩa là Model đang khởi động
+                if (response.status === 503 || err.includes("loading")) {
+                    alert("💤 Model đang khởi động (Cold Boot). Đợi 30 giây rồi thử lại nhé!");
                 } else {
-                    alert(`❌ Lỗi ${req.status}: ${err}`);
+                    alert("❌ Lỗi: " + response.status + ". Kiểm tra lại Token!");
                 }
                 reset(); return;
             }
 
-            const data = await req.json();
-            // Xử lý kết quả trả về từ Router (thường là mảng mảng [[{...}]])
-            const preds = Array.isArray(data[0]) ? data[0] : data;
-            
-            // Sắp xếp điểm cao nhất
-            preds.sort((a,b) => b.score - a.score);
-            const top = preds[0];
+            const data = await response.json();
+            // Xử lý dữ liệu trả về
+            const items = Array.isArray(data[0]) ? data[0] : data;
+            items.sort((a, b) => b.score - a.score); // Lấy điểm cao nhất
+            const top = items[0];
 
-            document.getElementById('lbl').innerText = top.label;
-            document.getElementById('score').innerText = `(${Math.round(top.score*100)}%)`;
+            // Hiển thị kết quả
+            const lbl = document.getElementById('lbl');
+            const map = {
+                "LABEL_0": { t: "✅ SẠCH (CLEAN)", c: "safe" },
+                "LABEL_1": { t: "⚠️ XÚC PHẠM", c: "toxic" },
+                "LABEL_2": { t: "⛔ THÙ GHÉT", c: "toxic" }
+            };
+            
+            const info = map[top.label] || map["LABEL_1"];
+            lbl.innerText = info.t;
+            lbl.className = "badge " + info.c;
+            document.getElementById('score').innerText = "Độ tin cậy: " + (top.score * 100).toFixed(1) + "%";
             res.style.display = 'block';
 
         } catch (e) {
-            alert("Lỗi kết nối: " + e.message);
+            alert("Lỗi kết nối mạng! Thử lại sau.");
+            console.error(e);
         }
         reset();
     }
 
-    function reset() { 
-        document.getElementById('btn').innerText = "PHÂN TÍCH"; 
-        document.getElementById('btn').disabled = false; 
+    function reset() {
+        document.getElementById('btn').innerText = "PHÂN TÍCH";
+        document.getElementById('btn').disabled = false;
     }
 </script>
 
