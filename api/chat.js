@@ -2,7 +2,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
-    // 👇👇👇 DÁN API KEY CỦA GOOGLE VÀO ĐÂY (Giữ nguyên dấu ngoặc kép) 👇👇👇
+    // 👇👇👇 DÁN KEY GOOGLE CỦA BẠN VÀO ĐÂY 👇👇👇
     const API_KEY = "AIzaSyDz-WxEJjP84yzecNi8_J_I6LTZx_UKDME"; 
 
     if (req.method !== 'POST') {
@@ -12,35 +12,31 @@ export default async function handler(req, res) {
     try {
         const { inputs } = req.body;
         
-        // Khởi tạo Google Gemini
         const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        
+        // 🛠️ SỬA LỖI Ở ĐÂY: Dùng hàm đúng là "getGenerativeModel"
+        // Dùng model 'gemini-1.5-flash' cho nhanh và miễn phí
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        // Dạy Gemini cách đánh giá (Prompt Engineering)
         const prompt = `
         Bạn là AI kiểm duyệt nội dung (Content Moderator) chuyên về tiếng Việt.
-        Hãy phân tích câu bình luận sau: "${inputs}"
+        Hãy phân tích câu: "${inputs}"
         
-        Yêu cầu trả về kết quả dưới dạng JSON chính xác như sau (không giải thích gì thêm):
-        - Nếu câu bình luận an toàn/tích cực: {"label": "LABEL_0", "score": 0.99}
-        - Nếu câu bình luận thô tục/xúc phạm nhẹ: {"label": "LABEL_1", "score": 0.95}
-        - Nếu câu bình luận thù ghét/nguy hiểm/chửi bới nặng nề: {"label": "LABEL_2", "score": 0.99}
-        
-        Chỉ trả về đúng chuỗi JSON.
+        Yêu cầu trả về JSON chính xác (không thêm markdown, không thêm chữ):
+        - Nếu an toàn: {"label": "LABEL_0", "score": 0.99}
+        - Nếu xúc phạm: {"label": "LABEL_1", "score": 0.95}
+        - Nếu thù ghét: {"label": "LABEL_2", "score": 0.99}
         `;
 
-        // Gửi lệnh cho Google
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const text = response.text();
+        let text = response.text();
 
-        // Lọc lấy phần JSON sạch từ câu trả lời của Google
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("Google trả về sai định dạng");
+        // Làm sạch chuỗi JSON (đề phòng Google trả về thừa dấu ```json)
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
-        const data = JSON.parse(jsonMatch[0]);
+        const data = JSON.parse(text);
 
-        // Trả về cho Web (dạng mảng để giống hệt Hugging Face cũ, web không cần sửa giao diện)
         return res.status(200).json([data]);
 
     } catch (error) {
