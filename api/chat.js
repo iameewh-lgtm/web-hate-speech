@@ -1,9 +1,8 @@
 // File: api/chat.js
 export default async function handler(req, res) {
-    // 👇👇👇 DÁN TOKEN MỚI CỦA BẠN VÀO ĐÂY 👇👇👇
-    const TOKEN = "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"; 
+    // 👇👇👇 DÁN TOKEN MỚI (Write) CỦA BẠN VÀO ĐÂY 👇👇👇
+    const TOKEN = "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"; 
     
-    // Model ID
     const MODEL_ID = "iameewh/vihsd-hate-speech-pro";
 
     if (req.method !== 'POST') {
@@ -13,27 +12,26 @@ export default async function handler(req, res) {
     try {
         const { inputs } = req.body;
 
-        // MẸO: Quay lại link cũ nhưng thêm User-Agent để giả làm trình duyệt
+        // CHUYỂN SANG LINK ROUTER (Theo yêu cầu của lỗi 410)
         const response = await fetch(
-            `https://api-inference.huggingface.co/models/${MODEL_ID}`,
+            `https://router.huggingface.co/models/${MODEL_ID}`,
             {
                 headers: {
                     Authorization: `Bearer ${TOKEN}`,
-                    "Content-Type": "application/json",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    "Content-Type": "application/json"
                 },
                 method: "POST",
                 body: JSON.stringify({ inputs }),
             }
         );
 
-        // --- BỘ BẮT LỖI THÔNG MINH ---
-        // Nếu server trả về lỗi, ta đọc nội dung lỗi đó ra
+        // BỘ BẮT LỖI CHI TIẾT
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("Hugging Face Error:", errorText);
+            console.error("HF Error:", errorText);
+            // Trả về nguyên văn lỗi để xem nó báo gì (404 hay 401...)
             return res.status(response.status).json({ 
-                error: `Lỗi từ AI (${response.status}): ${errorText.substring(0, 200)}` 
+                error: `Lỗi Router (${response.status}): ${errorText}` 
             });
         }
 
