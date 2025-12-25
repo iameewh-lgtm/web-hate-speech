@@ -1,5 +1,11 @@
 {
   "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "build": "echo 'Build skipped'"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.1.0"
   }
