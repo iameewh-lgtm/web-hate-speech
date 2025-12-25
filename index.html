@@ -2,280 +2,116 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cờ Tướng Online | iameewh</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hate Speech Detector (Colab)</title>
     <style>
-        body {
-            background-color: #2c2c2c;
-            color: #fff;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        h1 { margin: 10px 0; font-size: 1.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        .turn-indicator {
-            margin-bottom: 15px;
-            padding: 8px 20px;
-            background: #444;
-            border-radius: 20px;
-            font-weight: bold;
-            border: 2px solid #666;
-        }
-        .red-turn { color: #ff5252; border-color: #ff5252; }
-        .black-turn { color: #000; background: #aaa; border-color: #000; }
-
-        /* Bàn cờ gỗ */
-        #board {
-            width: 360px;
-            height: 400px;
-            background-color: #eecfa1;
-            background-image: linear-gradient(#d4a976 2px, transparent 2px),
-            linear-gradient(90deg, #d4a976 2px, transparent 2px);
-            background-size: 40px 40px;
-            background-position: 19px 19px; /* Căn chỉnh lưới */
-            position: relative;
-            border: 5px solid #8b5a2b;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            user-select: none;
-        }
-
-        /* Sông (River) */
-        .river {
-            position: absolute;
-            top: 178px;
-            left: 20px;
-            width: 320px;
-            height: 40px;
-            background-color: #eecfa1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #8b5a2b;
-            font-size: 20px;
-            z-index: 0;
-        }
-
-        /* Quân cờ */
-        .piece {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            position: absolute;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.4), inset 0 -3px 0 rgba(0,0,0,0.2);
-            transition: all 0.2s;
-            z-index: 10;
-        }
-        .piece:active { transform: scale(1.1); }
+        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: #1e293b; padding: 30px; border-radius: 16px; border: 1px solid #334155; width: 100%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         
-        .piece.red { 
-            background: #fcebeb; 
-            color: #d60000; 
-            border: 2px solid #d60000; 
-        }
-        .piece.black { 
-            background: #e0e0e0; 
-            color: #000; 
-            border: 2px solid #000; 
-        }
-        .selected {
-            box-shadow: 0 0 0 3px #00ff00, 0 5px 10px rgba(0,0,0,0.5);
-            z-index: 20;
-            transform: scale(1.15);
-        }
+        label { font-size: 14px; color: #94a3b8; display: block; margin-bottom: 8px; font-weight: bold; }
+        input, textarea { width: 100%; background: #0f172a; color: white; border: 1px solid #334155; padding: 12px; border-radius: 8px; box-sizing: border-box; font-size: 16px; margin-bottom: 20px; outline: none; }
+        input:focus, textarea:focus { border-color: #3b82f6; }
+        
+        button { width: 100%; padding: 14px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        button:hover { background: #2563eb; }
+        button:disabled { background: #475569; cursor: wait; }
 
-        /* Điểm gợi ý nước đi */
-        .dot {
-            width: 12px;
-            height: 12px;
-            background: rgba(0, 255, 0, 0.5);
-            border-radius: 50%;
-            position: absolute;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            z-index: 5;
-        }
-
-        /* Cửu cung (đường chéo) - vẽ thủ công bằng CSS cho nhẹ */
-        .palace-line {
-            position: absolute;
-            background: #d4a976;
-            height: 2px;
-            width: 90px;
-            transform-origin: top left;
-            z-index: 0;
-        }
+        .result-box { margin-top: 20px; padding: 20px; background: #0f172a; border-radius: 8px; display: none; }
+        .badge { padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; }
+        .clean { color: #4ade80; border: 1px solid #4ade80; background: rgba(74, 222, 128, 0.1); }
+        .toxic { color: #f87171; border: 1px solid #f87171; background: rgba(248, 113, 113, 0.1); }
     </style>
 </head>
 <body>
 
-    <h1>CỜ TƯỚNG <span style="color:#f59e0b">iameewh</span></h1>
-    
-    <div id="turnDisplay" class="turn-indicator red-turn">Lượt Đỏ đi</div>
+<div class="card">
+    <h2 style="text-align:center; margin-top:0">Kết nối Google Colab</h2>
 
-    <div id="board">
-        <div class="river">SỞ HÀ HÁN GIỚI</div>
-        <div class="palace-line" style="top:20px; left:140px; transform: rotate(45deg); width: 113px;"></div>
-        <div class="palace-line" style="top:20px; left:220px; transform: rotate(135deg); width: 113px;"></div>
-        <div class="palace-line" style="top:300px; left:140px; transform: rotate(45deg); width: 113px;"></div>
-        <div class="palace-line" style="top:300px; left:220px; transform: rotate(135deg); width: 113px;"></div>
-    </div>
+    <label>🔗 Dán Link Ngrok (từ Colab) vào đây:</label>
+    <input type="text" id="serverUrl" placeholder="Ví dụ: https://xxxx-xx-xx.ngrok-free.app">
 
-    <div style="margin-top:20px; color:#888; font-size: 12px;">
-        Chạm để chọn quân -> Chạm ô trống để đi
+    <label>💬 Nhập nội dung cần kiểm tra:</label>
+    <textarea id="inp" rows="3" placeholder="Nhập thử: cmn, vcl, dkm..."></textarea>
+
+    <button id="btn" onclick="check()">PHÂN TÍCH</button>
+
+    <div class="result-box" id="res">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="lbl" class="badge">...</span>
+            <span id="score" style="color:#94a3b8"></span>
+        </div>
+        <p id="desc" style="color:#cbd5e1; margin-top:10px; font-size:14px; font-style:italic;"></p>
     </div>
-    <button onclick="resetGame()" style="margin-top:10px; padding:10px 20px; background:#444; color:#fff; border:none; border-radius:5px; cursor:pointer;">Ván Mới</button>
+</div>
 
 <script>
-    const boardEl = document.getElementById('board');
-    const turnEl = document.getElementById('turnDisplay');
-    
-    const CELL_SIZE = 40;
-    const OFFSET_X = 20; // Lề trái
-    const OFFSET_Y = 20; // Lề trên
+    async function check() {
+        // Lấy link từ ô nhập và xóa khoảng trắng thừa
+        let url = document.getElementById('serverUrl').value.trim();
+        const txt = document.getElementById('inp').value.trim();
+        const btn = document.getElementById('btn');
+        const res = document.getElementById('res');
 
-    // Ký hiệu quân cờ (Chữ Hán)
-    const P_RED = { Gen: '帥', Adv: '仕', Ele: '相', Hor: '馬', Cha: '車', Can: '炮', Sol: '兵' };
-    const P_BLK = { Gen: '將', Adv: '士', Ele: '象', Hor: '馬', Cha: '車', Can: '炮', Sol: '卒' };
+        if (!url) return alert("❌ Chưa nhập Link Ngrok! Hãy copy từ Colab dán vào.");
+        if (!txt) return alert("❌ Chưa nhập nội dung kiểm tra!");
 
-    // Sơ đồ bàn cờ ban đầu
-    // r=Red, b=Black. Tên viết tắt tiếng Anh.
-    const initialSetup = [
-        {id:'b_c1', type:'Cha', color:'b', x:0, y:0}, {id:'b_h1', type:'Hor', color:'b', x:1, y:0}, {id:'b_e1', type:'Ele', color:'b', x:2, y:0}, {id:'b_a1', type:'Adv', color:'b', x:3, y:0}, {id:'b_g',  type:'Gen', color:'b', x:4, y:0}, {id:'b_a2', type:'Adv', color:'b', x:5, y:0}, {id:'b_e2', type:'Ele', color:'b', x:6, y:0}, {id:'b_h2', type:'Hor', color:'b', x:7, y:0}, {id:'b_c2', type:'Cha', color:'b', x:8, y:0},
-        {id:'b_p1', type:'Can', color:'b', x:1, y:2}, {id:'b_p2', type:'Can', color:'b', x:7, y:2},
-        {id:'b_s1', type:'Sol', color:'b', x:0, y:3}, {id:'b_s2', type:'Sol', color:'b', x:2, y:3}, {id:'b_s3', type:'Sol', color:'b', x:4, y:3}, {id:'b_s4', type:'Sol', color:'b', x:6, y:3}, {id:'b_s5', type:'Sol', color:'b', x:8, y:3},
-        
-        {id:'r_s1', type:'Sol', color:'r', x:0, y:6}, {id:'r_s2', type:'Sol', color:'r', x:2, y:6}, {id:'r_s3', type:'Sol', color:'r', x:4, y:6}, {id:'r_s4', type:'Sol', color:'r', x:6, y:6}, {id:'r_s5', type:'Sol', color:'r', x:8, y:6},
-        {id:'r_p1', type:'Can', color:'r', x:1, y:7}, {id:'r_p2', type:'Can', color:'r', x:7, y:7},
-        {id:'r_c1', type:'Cha', color:'r', x:0, y:9}, {id:'r_h1', type:'Hor', color:'r', x:1, y:9}, {id:'r_e1', type:'Ele', color:'r', x:2, y:9}, {id:'r_a1', type:'Adv', color:'r', x:3, y:9}, {id:'r_g',  type:'Gen', color:'r', x:4, y:9}, {id:'r_a2', type:'Adv', color:'r', x:5, y:9}, {id:'r_e2', type:'Ele', color:'r', x:6, y:9}, {id:'r_h2', type:'Hor', color:'r', x:7, y:9}, {id:'r_c2', type:'Cha', color:'r', x:8, y:9},
-    ];
+        // Xử lý link: đảm bảo không có dấu / ở cuối rồi thêm /predict
+        // Ví dụ: https://abc.ngrok.app/ -> https://abc.ngrok.app/predict
+        url = url.replace(/\/$/, ""); 
+        const apiEndpoint = url + "/predict";
 
-    let pieces = [];
-    let selectedPiece = null;
-    let turn = 'r'; // r = Red đi trước
+        btn.innerText = "⏳ Đang gửi sang Colab..."; 
+        btn.disabled = true; 
+        res.style.display = 'none';
 
-    function initGame() {
-        pieces = JSON.parse(JSON.stringify(initialSetup));
-        turn = 'r';
-        selectedPiece = null;
-        renderBoard();
-    }
+        try {
+            const response = await fetch(apiEndpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ inputs: txt })
+            });
 
-    function renderBoard() {
-        // Xóa các quân cờ cũ (giữ lại background và river)
-        const oldPieces = document.querySelectorAll('.piece');
-        oldPieces.forEach(p => p.remove());
-
-        // Vẽ quân mới
-        pieces.forEach(p => {
-            const el = document.createElement('div');
-            el.className = `piece ${p.color === 'r' ? 'red' : 'black'}`;
-            el.innerText = p.color === 'r' ? P_RED[p.type] : P_BLK[p.type];
-            // Tính vị trí pixel
-            el.style.left = (OFFSET_X + p.x * CELL_SIZE - 18) + 'px'; // -18 là nửa width quân cờ (36/2)
-            el.style.top = (OFFSET_Y + p.y * CELL_SIZE - 18) + 'px';
-            
-            el.onclick = (e) => handlePieceClick(p, e);
-            
-            if (selectedPiece && selectedPiece.id === p.id) {
-                el.classList.add('selected');
+            if (!response.ok) {
+                throw new Error("Lỗi kết nối! Kiểm tra lại Link Ngrok.");
             }
-            boardEl.appendChild(el);
-        });
-        
-        updateTurnUI();
-    }
 
-    function handlePieceClick(p, e) {
-        e.stopPropagation(); // Ngăn click xuyên xuống bàn cờ
-
-        // Nếu chọn quân đúng lượt
-        if (p.color === turn) {
-            selectedPiece = p;
-            renderBoard();
-        } 
-        // Nếu chọn quân đối phương (Ăn quân)
-        else if (selectedPiece) {
-            movePiece(p.x, p.y);
-        }
-    }
-
-    // Xử lý click vào ô trống trên bàn cờ để di chuyển
-    boardEl.onclick = (e) => {
-        if (!selectedPiece) return;
-        
-        const rect = boardEl.getBoundingClientRect();
-        const clickX = e.clientX - rect.left - OFFSET_X;
-        const clickY = e.clientY - rect.top - OFFSET_Y;
-        
-        // Làm tròn về tọa độ lưới (0-8, 0-9)
-        const gridX = Math.round(clickX / CELL_SIZE);
-        const gridY = Math.round(clickY / CELL_SIZE);
-
-        if (gridX >= 0 && gridX <= 8 && gridY >= 0 && gridY <= 9) {
-            movePiece(gridX, gridY);
-        }
-    };
-
-    function movePiece(targetX, targetY) {
-        // Kiểm tra xem có quân nào ở ô đích không
-        const targetPieceIndex = pieces.findIndex(p => p.x === targetX && p.y === targetY);
-        
-        // 1. Logic ăn quân: Nếu ô đích có quân
-        if (targetPieceIndex !== -1) {
-            const targetP = pieces[targetPieceIndex];
-            if (targetP.color === turn) {
-                // Click nhầm vào quân phe mình -> Đổi chọn quân khác
-                selectedPiece = targetP;
-                renderBoard();
-                return;
+            const data = await response.json();
+            
+            // Tìm nhãn có điểm cao nhất
+            // Data trả về thường là mảng các nhãn: [{label:..., score:...}, ...]
+            // Cần sort để lấy cái score cao nhất
+            let top;
+            if (Array.isArray(data)) {
+                 data.sort((a, b) => b.score - a.score);
+                 top = data[0];
             } else {
-                // Ăn quân: Xóa quân đối phương khỏi mảng
-                pieces.splice(targetPieceIndex, 1);
-                // Kiểm tra xem Tướng có bị ăn không (Game Over)
-                if (targetP.type === 'Gen') {
-                    setTimeout(() => alert(turn === 'r' ? "ĐỎ THẮNG!" : "ĐEN THẮNG!"), 100);
-                }
+                top = data; // Trường hợp trả về 1 object
             }
+
+            // Hiển thị kết quả
+            const map = {
+                "LABEL_0": { t: "✅ SẠCH (CLEAN)", c: "clean", d: "Nội dung an toàn, không vi phạm." },
+                "LABEL_1": { t: "⚠️ XÚC PHẠM", c: "toxic", d: "Phát hiện từ ngữ thô tục hoặc công kích." },
+                "LABEL_2": { t: "⛔ THÙ GHÉT", c: "toxic", d: "Nội dung kích động thù hằn, rất nguy hiểm." }
+            };
+            
+            // Nếu AI trả về label khác thì mặc định coi là LABEL_1 (Toxic nhẹ)
+            const info = map[top.label] || map["LABEL_1"];
+
+            document.getElementById('lbl').innerText = info.t;
+            document.getElementById('lbl').className = "badge " + info.c;
+            document.getElementById('score').innerText = "Độ tin cậy: " + (top.score * 100).toFixed(1) + "%";
+            document.getElementById('desc').innerText = info.d;
+            res.style.display = 'block';
+
+        } catch (e) {
+            alert("❌ KHÔNG KẾT NỐI ĐƯỢC!\n\n1. Đảm bảo Colab đang chạy (có nút Stop quay quay).\n2. Link Ngrok phải chính xác (copy lại xem).\n3. Link Ngrok thay đổi mỗi lần chạy lại Colab.");
+            console.error(e);
         }
-
-        // 2. Di chuyển quân đang chọn đến ô mới
-        // Lưu ý: Đây là bản Sandbox (tự do), không check luật đi để tránh lỗi code phức tạp. 
-        // Người chơi tự tuân thủ luật.
-        selectedPiece.x = targetX;
-        selectedPiece.y = targetY;
-
-        // 3. Đổi lượt
-        turn = turn === 'r' ? 'b' : 'r';
-        selectedPiece = null;
-        renderBoard();
+        
+        btn.innerText = "PHÂN TÍCH"; 
+        btn.disabled = false;
     }
-
-    function updateTurnUI() {
-        if (turn === 'r') {
-            turnEl.innerText = "Lượt ĐỎ đi";
-            turnEl.className = "turn-indicator red-turn";
-        } else {
-            turnEl.innerText = "Lượt ĐEN đi";
-            turnEl.className = "turn-indicator black-turn";
-        }
-    }
-
-    function resetGame() {
-        if(confirm("Chơi ván mới?")) initGame();
-    }
-
-    initGame();
 </script>
 
 </body>
