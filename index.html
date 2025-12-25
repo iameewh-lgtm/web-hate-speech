@@ -3,62 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hate Speech Check</title>
+    <title>Hate Speech Detector (No-Server)</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .container { text-align: center; width: 90%; max-width: 400px; }
-        input { width: 100%; padding: 15px; background: #111; border: 1px solid #333; color: #fff; border-radius: 8px; margin-bottom: 10px; }
-        button { width: 100%; padding: 15px; background: #222; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #333; }
-        #result { margin-top: 20px; font-weight: bold; min-height: 20px; }
+        body { background-color: #0a0a0a; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .box { background: #1a1a1a; padding: 30px; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 450px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; outline: none; }
+        input:focus { border-color: #0070f3; }
+        button { width: 100%; padding: 12px; background: #0070f3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        button:hover { background: #0051a2; }
+        button:disabled { background: #444; cursor: not-allowed; }
+        #result { margin-top: 20px; font-weight: bold; min-height: 24px; }
+        .err { color: #ff4444; font-size: 12px; margin-top: 10px; }
     </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
 </head>
 <body>
-    <div class="container">
-        <h3>CHECK HATE SPEECH (Fix Lỗi)</h3>
-        <input type="text" id="inp" placeholder="Nhập: cdmm, c.o.n.m.e...">
-        <button onclick="check()" id="btn">PHÂN TÍCH</button>
-        <div id="result"></div>
-    </div>
 
-    <script>
-        async function check() {
-            const txt = document.getElementById('inp').value;
-            const res = document.getElementById('result');
-            const btn = document.getElementById('btn');
+<div class="box">
+    <h2 style="margin-top:0; color:#888;">CHECK TEENCODE</h2>
+    <p style="font-size: 12px; color: #555">Chạy trực tiếp trên trình duyệt</p>
+    <input type="text" id="inp" placeholder="Nhập: cdmm, c.o.n.m.e, vcl...">
+    <button id="btn">PHÂN TÍCH</button>
+    <div id="result"></div>
+    <div id="debug" class="err"></div>
+</div>
 
-            if(!txt) return;
+<script type="module">
+    import { GoogleGenerativeAI } from "@google/generative-ai";
+
+    // 👇👇👇 DÁN API KEY VÀO GIỮA 2 DẤU NGOẶC KÉP 👇👇👇
+    const API_KEY = "AIzaSyDz-WxEJjP84yzecNi8_J_I6LTZx_UKDME"; 
+
+    const btn = document.getElementById('btn');
+    const inp = document.getElementById('inp');
+    const res = document.getElementById('result');
+    const debug = document.getElementById('debug');
+
+    btn.addEventListener('click', async () => {
+        const txt = inp.value.trim();
+        if (!txt) return;
+
+        btn.innerText = "ĐANG XỬ LÝ...";
+        btn.disabled = true;
+        res.innerHTML = "";
+        debug.innerText = "";
+
+        try {
+            // --- 1. DỊCH TEENCODE (Xử lý ngay tại trình duyệt) ---
+            let clean = txt.toLowerCase();
+            clean = clean.replace(/\./g, ''); // Xóa chấm
+            clean = clean.replace(/(?<=\b[a-z])\s+(?=[a-z]\b)/g, ''); // Gộp chữ
             
-            btn.innerText = "Đang xử lý..."; btn.disabled = true; res.innerText = "";
+            const dict = {
+                "cc": "cục cứt", "cmm": "con mẹ mày", "dcm": "địt con mẹ",
+                "dm": "địt mẹ", "đm": "địt mẹ", "vcl": "vãi cả lồn",
+                "vl": "vãi lồn", "clm": "cái lờ má", "cdmm": "con đĩ mẹ mày",
+                "cdcmm": "con đĩ cái mẹ mày", "cmn": "con mẹ nó", "dell": "đéo"
+            };
+            clean = clean.split(' ').map(w => dict[w] || w).join(' ');
+            
+            console.log("Đã dịch:", clean);
 
-            try {
-                // Gọi vào file .mjs mới
-                const req = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ inputs: txt })
-                });
+            // --- 2. GỌI GOOGLE ---
+            const genAI = new GoogleGenerativeAI(API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-                if (!req.ok) throw new Error(`Lỗi Server: ${req.status}`);
+            const prompt = `Phân loại câu: "${clean}" (Gốc: "${txt}"). 
+            Chỉ trả về JSON: {"label": "LABEL_0" (sạch) hoặc "LABEL_1" (xúc phạm) hoặc "LABEL_2" (thù ghét)}`;
 
-                const data = await req.json();
-                
-                // Kiểm tra kỹ dữ liệu trước khi dùng để không bị lỗi "undefined"
-                if (data.error) throw new Error(data.error);
-                if (!Array.isArray(data) || !data[0]) throw new Error("API trả về dữ liệu rỗng!");
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            let text = response.text().replace(/```json|```/g, '').trim();
+            
+            // Lấy JSON
+            const first = text.indexOf('{');
+            const last = text.lastIndexOf('}');
+            if (first !== -1 && last !== -1) text = text.substring(first, last + 1);
+            
+            const data = JSON.parse(text);
 
-                const score = data[0];
-                const label = score.label;
+            // --- 3. HIỂN THỊ ---
+            if (data.label === 'LABEL_2') 
+                res.innerHTML = `<span style="color:#ff4444; font-size:1.2em">⛔ THÙ GHÉT</span>`;
+            else if (data.label === 'LABEL_1') 
+                res.innerHTML = `<span style="color:#ffbb33; font-size:1.2em">⚠️ XÚC PHẠM</span>`;
+            else 
+                res.innerHTML = `<span style="color:#00c851; font-size:1.2em">✅ AN TOÀN</span>`;
 
-                if (label === 'LABEL_2') res.innerHTML = `<span style="color:red">⛔ THÙ GHÉT</span>`;
-                else if (label === 'LABEL_1') res.innerHTML = `<span style="color:orange">⚠️ XÚC PHẠM</span>`;
-                else res.innerHTML = `<span style="color:green">✅ AN TOÀN</span>`;
-
-            } catch (e) {
-                res.innerHTML = `<span style="color:yellow">Lỗi: ${e.message}</span>`;
+        } catch (e) {
+            console.error(e);
+            // Nếu Google chặn (Safety Block), ta tự coi đó là Toxic
+            if (e.message.includes("SAFETY") || e.message.includes("candidate")) {
+                 res.innerHTML = `<span style="color:#ff4444; font-size:1.2em">⛔ CỰC KỲ ĐỘC HẠI (Google Blocked)</span>`;
+            } else {
+                 debug.innerText = "Lỗi: " + e.message;
             }
-            btn.innerText = "PHÂN TÍCH"; btn.disabled = false;
         }
-    </script>
+        
+        btn.innerText = "PHÂN TÍCH";
+        btn.disabled = false;
+    });
+</script>
+
 </body>
 </html>
