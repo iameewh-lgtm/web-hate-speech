@@ -14,9 +14,8 @@ export default async function handler(req, res) {
         
         const genAI = new GoogleGenerativeAI(API_KEY);
         
-        // 🛠️ SỬA LỖI Ở ĐÂY: Dùng hàm đúng là "getGenerativeModel"
-        // Dùng model 'gemini-1.5-flash' cho nhanh và miễn phí
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // 🛠️ QUAY VỀ "GEMINI-PRO" (Bản ổn định nhất, không bao giờ lỗi vặt)
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         const prompt = `
         Bạn là AI kiểm duyệt nội dung (Content Moderator) chuyên về tiếng Việt.
@@ -32,7 +31,7 @@ export default async function handler(req, res) {
         const response = await result.response;
         let text = response.text();
 
-        // Làm sạch chuỗi JSON (đề phòng Google trả về thừa dấu ```json)
+        // Làm sạch chuỗi JSON
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
         const data = JSON.parse(text);
