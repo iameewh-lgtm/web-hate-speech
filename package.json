@@ -1,5 +1,5 @@
 {
   "dependencies": {
-    "@huggingface/inference": "^2.6.4"
+    "@google/generative-ai": "^0.1.0"
   }
 }
