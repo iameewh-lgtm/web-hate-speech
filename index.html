@@ -3,116 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hate Speech Detector (Colab)</title>
+    <title>AI Hate Speech Detector</title>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .card { background: #1e293b; padding: 30px; border-radius: 16px; border: 1px solid #334155; width: 100%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-        
-        label { font-size: 14px; color: #94a3b8; display: block; margin-bottom: 8px; font-weight: bold; }
-        input, textarea { width: 100%; background: #0f172a; color: white; border: 1px solid #334155; padding: 12px; border-radius: 8px; box-sizing: border-box; font-size: 16px; margin-bottom: 20px; outline: none; }
-        input:focus, textarea:focus { border-color: #3b82f6; }
-        
-        button { width: 100%; padding: 14px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
-        button:hover { background: #2563eb; }
-        button:disabled { background: #475569; cursor: wait; }
-
-        .result-box { margin-top: 20px; padding: 20px; background: #0f172a; border-radius: 8px; display: none; }
-        .badge { padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; }
-        .clean { color: #4ade80; border: 1px solid #4ade80; background: rgba(74, 222, 128, 0.1); }
-        .toxic { color: #f87171; border: 1px solid #f87171; background: rgba(248, 113, 113, 0.1); }
+        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .container { text-align: center; width: 90%; max-width: 400px; }
+        h1 { color: #888; font-size: 24px; margin-bottom: 5px; }
+        p { color: #555; font-size: 14px; margin-bottom: 30px; }
+        input { width: 100%; padding: 15px; background: #111; border: 1px solid #333; color: #fff; border-radius: 8px; outline: none; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; margin-top: 15px; background: #222; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #333; }
+        #result { margin-top: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
-
-<div class="card">
-    <h2 style="text-align:center; margin-top:0">Kết nối Google Colab</h2>
-
-    <label>🔗 Dán Link Ngrok (từ Colab) vào đây:</label>
-    <input type="text" id="serverUrl" placeholder="Ví dụ: https://xxxx-xx-xx.ngrok-free.app">
-
-    <label>💬 Nhập nội dung cần kiểm tra:</label>
-    <textarea id="inp" rows="3" placeholder="Nhập thử: cmn, vcl, dkm..."></textarea>
-
-    <button id="btn" onclick="check()">PHÂN TÍCH</button>
-
-    <div class="result-box" id="res">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span id="lbl" class="badge">...</span>
-            <span id="score" style="color:#94a3b8"></span>
-        </div>
-        <p id="desc" style="color:#cbd5e1; margin-top:10px; font-size:14px; font-style:italic;"></p>
-    </div>
-</div>
-
-<script>
-    async function check() {
-        // Lấy link từ ô nhập và xóa khoảng trắng thừa
-        let url = document.getElementById('serverUrl').value.trim();
-        const txt = document.getElementById('inp').value.trim();
-        const btn = document.getElementById('btn');
-        const res = document.getElementById('res');
-
-        if (!url) return alert("❌ Chưa nhập Link Ngrok! Hãy copy từ Colab dán vào.");
-        if (!txt) return alert("❌ Chưa nhập nội dung kiểm tra!");
-
-        // Xử lý link: đảm bảo không có dấu / ở cuối rồi thêm /predict
-        // Ví dụ: https://abc.ngrok.app/ -> https://abc.ngrok.app/predict
-        url = url.replace(/\/$/, ""); 
-        const apiEndpoint = url + "/predict";
-
-        btn.innerText = "⏳ Đang gửi sang Colab..."; 
-        btn.disabled = true; 
-        res.style.display = 'none';
-
-        try {
-            const response = await fetch(apiEndpoint, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ inputs: txt })
-            });
-
-            if (!response.ok) {
-                throw new Error("Lỗi kết nối! Kiểm tra lại Link Ngrok.");
-            }
-
-            const data = await response.json();
-            
-            // Tìm nhãn có điểm cao nhất
-            // Data trả về thường là mảng các nhãn: [{label:..., score:...}, ...]
-            // Cần sort để lấy cái score cao nhất
-            let top;
-            if (Array.isArray(data)) {
-                 data.sort((a, b) => b.score - a.score);
-                 top = data[0];
-            } else {
-                top = data; // Trường hợp trả về 1 object
-            }
-
-            // Hiển thị kết quả
-            const map = {
-                "LABEL_0": { t: "✅ SẠCH (CLEAN)", c: "clean", d: "Nội dung an toàn, không vi phạm." },
-                "LABEL_1": { t: "⚠️ XÚC PHẠM", c: "toxic", d: "Phát hiện từ ngữ thô tục hoặc công kích." },
-                "LABEL_2": { t: "⛔ THÙ GHÉT", c: "toxic", d: "Nội dung kích động thù hằn, rất nguy hiểm." }
-            };
-            
-            // Nếu AI trả về label khác thì mặc định coi là LABEL_1 (Toxic nhẹ)
-            const info = map[top.label] || map["LABEL_1"];
-
-            document.getElementById('lbl').innerText = info.t;
-            document.getElementById('lbl').className = "badge " + info.c;
-            document.getElementById('score').innerText = "Độ tin cậy: " + (top.score * 100).toFixed(1) + "%";
-            document.getElementById('desc').innerText = info.d;
-            res.style.display = 'block';
-
-        } catch (e) {
-            alert("❌ KHÔNG KẾT NỐI ĐƯỢC!\n\n1. Đảm bảo Colab đang chạy (có nút Stop quay quay).\n2. Link Ngrok phải chính xác (copy lại xem).\n3. Link Ngrok thay đổi mỗi lần chạy lại Colab.");
-            console.error(e);
-        }
+    <div class="container">
+        <h1>iameewh.art</h1>
+        <p>Hệ thống phát hiện ngôn từ độc hại (Teencode Supported)</p>
         
-        btn.innerText = "PHÂN TÍCH"; 
-        btn.disabled = false;
-    }
-</script>
+        <input type="text" id="inp" placeholder="Nhập thử: cdmm, c.o.n.m.e...">
+        <button onclick="check()" id="btn">ĐANG XỬ LÝ...</button>
+        <div id="result"></div>
+    </div>
 
+    <script>
+        document.getElementById('btn').innerText = "PHÂN TÍCH";
+        
+        async function check() {
+            const txt = document.getElementById('inp').value;
+            const btn = document.getElementById('btn');
+            const res = document.getElementById('result');
+
+            if(!txt) return;
+
+            btn.innerText = "Đang check..."; btn.disabled = true; res.innerHTML = "";
+
+            try {
+                // Gọi về chính server Vercel này
+                const req = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ inputs: txt })
+                });
+                
+                const data = await req.json();
+                const score = data[0];
+
+                if (score.label === 'LABEL_2') res.innerHTML = `<span style="color:red">⛔ THÙ GHÉT (${(score.score*100).toFixed(0)}%)</span>`;
+                else if (score.label === 'LABEL_1') res.innerHTML = `<span style="color:orange">⚠️ XÚC PHẠM (${(score.score*100).toFixed(0)}%)</span>`;
+                else res.innerHTML = `<span style="color:green">✅ AN TOÀN</span>`;
+
+            } catch (e) {
+                res.innerHTML = "Lỗi hệ thống: " + e.message;
+            }
+            btn.innerText = "PHÂN TÍCH"; btn.disabled = false;
+        }
+    </script>
 </body>
 </html>
