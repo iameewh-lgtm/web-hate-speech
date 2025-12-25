@@ -1,10 +1,8 @@
 // File: api/chat.js
 export default async function handler(req, res) {
-    // 1. Cấu hình
-    const TOKEN = "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"; // Token của bạn
+    const TOKEN = "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"; // Token của bạn
     const MODEL_ID = "iameewh/vihsd-hate-speech-pro";
     
-    // 2. Chỉ chấp nhận phương thức POST
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -12,9 +10,9 @@ export default async function handler(req, res) {
     try {
         const { inputs } = req.body;
 
-        // 3. Server Vercel gọi trực tiếp sang Hugging Face (Không bị chặn)
+        // 👇👇👇 QUAN TRỌNG: Đã đổi sang link ROUTER mới nhất 👇👇👇
         const response = await fetch(
-            `https://api-inference.huggingface.co/models/${MODEL_ID}`,
+            `https://router.huggingface.co/models/${MODEL_ID}`,
             {
                 headers: {
                     Authorization: `Bearer ${TOKEN}`,
@@ -25,7 +23,6 @@ export default async function handler(req, res) {
             }
         );
 
-        // 4. Xử lý kết quả trả về
         const data = await response.json();
         return res.status(200).json(data);
 
