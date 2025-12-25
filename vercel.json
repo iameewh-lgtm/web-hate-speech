@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/proxy",
-      "destination": "https://router.huggingface.co/models/iameewh/vihsd-hate-speech-pro"
+      "destination": "https://api-inference.huggingface.co/models/iameewh/vihsd-hate-speech-pro"
     }
   ]
 }
